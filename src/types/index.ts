@@ -40,6 +40,7 @@ export interface Budget {
   amount: number; // stored in cents
   month: number;
   year: number;
+  name?: string;
   created_at: string;
   updated_at: string;
   // Computed
@@ -58,6 +59,9 @@ export interface SavingsGoal {
   current_amount: number; // stored in cents
   target_date: string;
   status: SavingsGoalStatus;
+  category?: string;
+  description?: string;
+  color?: string;
   created_at: string;
   updated_at: string;
   contributions?: SavingsContribution[];

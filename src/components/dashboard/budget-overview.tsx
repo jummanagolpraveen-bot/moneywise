@@ -1,78 +1,120 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { useBudgets } from "@/hooks/use-budgets";
+import { useAuth } from "@/context/auth-provider";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { ArrowRight, PiggyBank } from "lucide-react";
 
-// Mock data — will be replaced with real data in Phase 6
-const budgets = [
-  { category: "Food", budgeted: 100000, spent: 85000, color: "#f97316" },
-  { category: "Transportation", budgeted: 50000, spent: 42000, color: "#3b82f6" },
-  { category: "Shopping", budgeted: 80000, spent: 68000, color: "#ec4899" },
-  { category: "Entertainment", budgeted: 40000, spent: 32000, color: "#06b6d4" },
-  { category: "Bills", budgeted: 120000, spent: 95000, color: "#f59e0b" },
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
 ];
 
 export function BudgetOverview() {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Budget Overview</CardTitle>
-        <span className="text-xs text-foreground-muted">November 2026</span>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {budgets.map((budget) => {
-            const percentage = Math.round((budget.spent / budget.budgeted) * 100);
-            const isOverBudget = percentage > 100;
-            const isWarning = percentage >= 80 && !isOverBudget;
+  const { profile } = useAuth();
+  const currency = profile?.currency || "USD";
+  const { budgets, selectedMonth, selectedYear, isLoading } = useBudgets();
 
-            return (
-              <div key={budget.category} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">
-                    {budget.category}
-                  </span>
-                  <span className="text-foreground-muted">
-                    ${(budget.spent / 100).toLocaleString()} / $
-                    {(budget.budgeted / 100).toLocaleString()}
-                  </span>
+  return (
+    <Card className="flex flex-col h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <div>
+          <CardTitle>Budget Overview</CardTitle>
+          <span className="text-xs text-foreground-muted">
+            {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
+          </span>
+        </div>
+        <Link
+          href="/budgets"
+          className="text-xs font-semibold text-navy-600 dark:text-navy-400 hover:underline inline-flex items-center gap-1"
+        >
+          View all <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col justify-center">
+        {isLoading ? (
+          <div className="space-y-4 py-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
                 </div>
-                <div className="h-2 bg-input-bg rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      isOverBudget
-                        ? "bg-red-500"
-                        : isWarning
+                <Skeleton className="h-2 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : budgets.length === 0 ? (
+          <div className="text-center py-6">
+            <div className="w-9 h-9 rounded-xl bg-input-bg flex items-center justify-center mx-auto mb-2 text-foreground-muted">
+              <PiggyBank className="w-4 h-4" />
+            </div>
+            <p className="text-xs text-foreground-muted">No budgets set for this month</p>
+            <Link
+              href="/budgets"
+              className="inline-block mt-2 text-xs font-semibold text-navy-600 dark:text-navy-400 hover:underline"
+            >
+              + Set monthly budget
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {budgets.slice(0, 4).map((budget) => {
+              const isOverBudget = budget.status === "exceeded";
+              const isWarning = budget.status === "warning";
+
+              return (
+                <div key={budget.id} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground truncate max-w-[130px]">
+                      {budget.category?.name || "General"}
+                    </span>
+                    <span className="text-foreground-muted">
+                      {formatCurrency(budget.spent || 0, currency)} /{" "}
+                      {formatCurrency(budget.amount, currency)}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-input-bg rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        isOverBudget
+                          ? "bg-red-500"
+                          : isWarning
                           ? "bg-amber-500"
                           : "bg-emerald-500"
-                    )}
-                    style={{ width: `${Math.min(percentage, 100)}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "text-xs font-medium",
-                      isOverBudget
-                        ? "text-red-500"
-                        : isWarning
+                      )}
+                      style={{ width: `${Math.min(budget.percentage || 0, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span
+                      className={cn(
+                        "font-semibold",
+                        isOverBudget
+                          ? "text-red-500"
+                          : isWarning
                           ? "text-amber-500"
                           : "text-emerald-500"
-                    )}
-                  >
-                    {percentage}%
-                  </span>
-                  <span className="text-xs text-foreground-muted">
-                    ${((budget.budgeted - budget.spent) / 100).toLocaleString()} remaining
-                  </span>
+                      )}
+                    >
+                      {budget.percentage}%
+                    </span>
+                    <span className="text-foreground-muted">
+                      {isOverBudget
+                        ? `Exceeded by ${formatCurrency(Math.abs(budget.remaining || 0), currency)}`
+                        : `${formatCurrency(budget.remaining || 0, currency)} left`}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
-
