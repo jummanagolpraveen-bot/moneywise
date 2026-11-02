@@ -282,3 +282,4 @@ DROP TRIGGER IF EXISTS on_savings_contribution_change ON public.savings_contribu
 CREATE TRIGGER on_savings_contribution_change
   AFTER INSERT OR DELETE ON public.savings_contributions
   FOR EACH ROW EXECUTE FUNCTION public.handle_savings_contribution();
+
