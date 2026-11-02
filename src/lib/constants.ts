@@ -52,9 +52,9 @@ export const DATE_FILTERS = [
   { label: "This Week", value: "this-week" },
   { label: "This Month", value: "this-month" },
   { label: "Last Month", value: "last-month" },
-  { label: "Last 3 Months", value: "last-3-months" },
   { label: "This Year", value: "this-year" },
-  { label: "Custom", value: "custom" },
+  { label: "All Time", value: "all-time" },
+  { label: "Custom Date Range", value: "custom" },
 ] as const;
 
 // Dashboard navigation items

@@ -12,7 +12,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Award, DollarSign, Calendar } from "lucide-react";
+import { useTransactions } from "@/hooks/use-transactions";
+import { useAuth } from "@/context/auth-provider";
 
 const netWorthTrend = [
   { month: "Jan", netWorth: 12000 },
@@ -29,6 +30,9 @@ const netWorthTrend = [
 ];
 
 export default function AnalyticsPage() {
+  const { profile } = useAuth();
+  const currency = profile?.currency || "USD";
+  const { transactions, isLoading } = useTransactions();
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -124,9 +128,17 @@ export default function AnalyticsPage() {
       {/* Core Charts Split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <IncomeExpenseChart />
+          <IncomeExpenseChart
+            transactions={transactions}
+            currency={currency}
+            isLoading={isLoading}
+          />
         </div>
-        <CategoryBreakdown />
+        <CategoryBreakdown
+          transactions={transactions}
+          currency={currency}
+          isLoading={isLoading}
+        />
       </div>
     </div>
   );

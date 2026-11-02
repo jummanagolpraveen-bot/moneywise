@@ -71,9 +71,111 @@ export function getPercentage(value: number, total: number): number {
 }
 
 /**
- * Clamp a number between min and max.
+ * Parse YYYY-MM-DD string into local midnight Date to avoid timezone shift.
  */
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
+export function parseDateOnly(dateStr: string): Date {
+  const parts = dateStr.split("-").map(Number);
+  if (parts.length === 3) {
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+  }
+  return new Date(dateStr);
 }
+
+/**
+ * Get start and end date bounds for a given filter.
+ */
+export function getDateRangeBounds(
+  filterType: string,
+  customStart?: string,
+  customEnd?: string
+): { start: Date; end: Date } | null {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const currentDate = now.getDate();
+
+  if (filterType === "this-week") {
+    // Current week: from Monday to Sunday
+    const day = now.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1) - day;
+    const start = new Date(currentYear, currentMonth, currentDate + diffToMonday, 0, 0, 0, 0);
+    const end = new Date(currentYear, currentMonth, start.getDate() + 6, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "this-month") {
+    const start = new Date(currentYear, currentMonth, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "last-month") {
+    const start = new Date(currentYear, currentMonth - 1, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "this-year") {
+    const start = new Date(currentYear, 0, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "custom" && customStart && customEnd) {
+    const start = parseDateOnly(customStart);
+    const end = parseDateOnly(customEnd);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // All time
+  return null;
+}
+
+/**
+ * Get equivalent previous period bounds to calculate trend percentage.
+ */
+export function getPreviousPeriodBounds(
+  filterType: string,
+  currentBounds: { start: Date; end: Date } | null
+): { start: Date; end: Date } | null {
+  if (!currentBounds) return null;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  if (filterType === "this-week") {
+    const start = new Date(currentBounds.start);
+    start.setDate(start.getDate() - 7);
+    const end = new Date(currentBounds.end);
+    end.setDate(end.getDate() - 7);
+    return { start, end };
+  }
+
+  if (filterType === "this-month") {
+    const start = new Date(currentYear, currentMonth - 1, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear, currentMonth, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "last-month") {
+    const start = new Date(currentYear, currentMonth - 2, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear, currentMonth - 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  if (filterType === "this-year") {
+    const start = new Date(currentYear - 1, 0, 1, 0, 0, 0, 0);
+    const end = new Date(currentYear - 1, 11, 31, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // Duration in ms for custom ranges
+  const duration = currentBounds.end.getTime() - currentBounds.start.getTime();
+  const end = new Date(currentBounds.start.getTime() - 1);
+  const start = new Date(end.getTime() - duration);
+  return { start, end };
+}
+
 
