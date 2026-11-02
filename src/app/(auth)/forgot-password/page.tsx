@@ -4,16 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wallet, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Wallet, Mail, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
+  const supabase = createClient();
+
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError(null);
+
     if (!email) {
       setError("Email is required");
       return;
@@ -25,11 +31,24 @@ export default function ForgotPasswordPage() {
     setError("");
     setIsLoading(true);
 
-    // TODO: Integrate with Supabase Auth in Phase 3
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error: resetError } =
+        await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth/callback?next=/settings`,
+        });
+
+      if (resetError) {
+        setApiError(resetError.message);
+        setIsLoading(false);
+        return;
+      }
+
       setSubmitted(true);
-    }, 1000);
+      setIsLoading(false);
+    } catch {
+      setApiError("Failed to send reset email. Please try again.");
+      setIsLoading(false);
+    }
   };
 
   if (submitted) {
@@ -46,7 +65,7 @@ export default function ForgotPasswordPage() {
         </p>
         <Link href="/login">
           <Button variant="outline" size="md">
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
             Back to Login
           </Button>
         </Link>
@@ -72,6 +91,13 @@ export default function ForgotPasswordPage() {
         password.
       </p>
 
+      {apiError && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           label="Email"
@@ -90,7 +116,7 @@ export default function ForgotPasswordPage() {
           className="w-full"
           disabled={isLoading}
         >
-          {isLoading ? "Sending..." : "Send Reset Link"}
+          {isLoading ? "Sending link..." : "Send Reset Link"}
         </Button>
       </form>
 
@@ -106,4 +132,3 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
-

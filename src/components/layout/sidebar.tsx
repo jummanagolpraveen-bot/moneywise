@@ -23,6 +23,7 @@ import {
   Settings,
 } from "lucide-react";
 import { useTheme } from "@/context/theme-provider";
+import { useAuth } from "@/context/auth-provider";
 
 // Map string icon names to Lucide components
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -39,6 +40,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 export function Sidebar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -157,8 +159,7 @@ export function Sidebar() {
             )}
             title={collapsed ? "Log out" : undefined}
             onClick={() => {
-              // TODO: Supabase logout in Phase 3
-              window.location.href = "/login";
+              signOut();
             }}
           >
             <LogOut className="w-5 h-5 shrink-0" />

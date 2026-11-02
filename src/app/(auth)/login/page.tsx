@@ -2,13 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wallet, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Wallet, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -21,23 +27,35 @@ export default function LoginPage() {
     else if (!/\S+@\S+\.\S+/.test(formData.email))
       newErrors.email = "Enter a valid email address";
     if (!formData.password) newErrors.password = "Password is required";
-    else if (formData.password.length < 6)
-      newErrors.password = "Password must be at least 6 characters";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!validate()) return;
 
     setIsLoading(true);
-    // TODO: Integrate with Supabase Auth in Phase 3
-    setTimeout(() => {
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setAuthError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
-      // For now, redirect to dashboard
-      window.location.href = "/dashboard";
-    }, 1000);
+    }
   };
 
   return (
@@ -56,6 +74,13 @@ export default function LoginPage() {
       <p className="text-foreground-muted mt-2 mb-8">
         Log in to your account to continue managing your finances.
       </p>
+
+      {authError && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm flex items-center gap-2.5 animate-shake">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{authError}</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
@@ -110,7 +135,7 @@ export default function LoginPage() {
           className="w-full"
           disabled={isLoading}
         >
-          {isLoading ? "Logging in..." : "Log In"}
+          {isLoading ? "Signing in..." : "Log In"}
         </Button>
       </form>
 
@@ -126,4 +151,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -2,13 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wallet, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import {
+  Wallet,
+  Mail,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  CheckCircle2,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSuccessEmailConfirmation, setIsSuccessEmailConfirmation] =
+    useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,15 +51,67 @@ export default function SignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!validate()) return;
 
     setIsLoading(true);
-    // TODO: Integrate with Supabase Auth in Phase 3
-    setTimeout(() => {
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.name.trim(),
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      // If session is null but user is returned, email confirmation is required by Supabase project settings
+      if (data.user && !data.session) {
+        setIsSuccessEmailConfirmation(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // If session is established right away, navigate to dashboard
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setAuthError("An unexpected error occurred during signup.");
       setIsLoading(false);
-      window.location.href = "/dashboard";
-    }, 1000);
+    }
   };
+
+  if (isSuccessEmailConfirmation) {
+    return (
+      <div className="animate-fade-in text-center">
+        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-foreground">Verify your email</h2>
+        <p className="text-foreground-muted mt-3 mb-8 max-w-sm mx-auto leading-relaxed">
+          We&apos;ve sent a confirmation link to{" "}
+          <span className="font-semibold text-foreground">
+            {formData.email}
+          </span>
+          . Please click the link in your email to activate your account.
+        </p>
+        <Link href="/login">
+          <Button variant="outline" size="md">
+            Go to Log In
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
@@ -60,6 +129,13 @@ export default function SignupPage() {
       <p className="text-foreground-muted mt-2 mb-8">
         Start managing your finances in minutes. It&apos;s completely free.
       </p>
+
+      {authError && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{authError}</span>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
@@ -146,4 +222,3 @@ export default function SignupPage() {
     </div>
   );
 }
-

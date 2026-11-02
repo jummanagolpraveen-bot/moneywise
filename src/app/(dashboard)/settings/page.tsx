@@ -1,33 +1,121 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTheme } from "@/context/theme-provider";
+import { useAuth } from "@/context/auth-provider";
 import { CURRENCIES } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 import {
   User,
   Moon,
   Sun,
-  Shield,
-  CreditCard,
-  Bell,
   Check,
   Save,
+  AlertCircle,
+  KeyRound,
 } from "lucide-react";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
-  const [currency, setCurrency] = useState("USD");
-  const [fullName, setFullName] = useState("John Doe");
-  const [email, setEmail] = useState("johndoe@example.com");
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const { user, profile, refreshProfile } = useAuth();
+  const supabase = createClient();
 
-  const handleSave = (e: React.FormEvent) => {
+  const [currency, setCurrency] = useState("USD");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Password state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setCurrency(profile.currency || "USD");
+    } else if (user) {
+      setFullName(user.user_metadata?.full_name || "");
+    }
+    if (user?.email) {
+      setEmail(user.email);
+    }
+  }, [user, profile]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setSavedSuccess(null);
+    setErrorMessage(null);
+    setIsSavingProfile(true);
+
+    try {
+      if (user) {
+        // Upsert to profiles table
+        const { error } = await supabase.from("profiles").upsert({
+          id: user.id,
+          full_name: fullName.trim(),
+          currency: currency,
+          updated_at: new Date().toISOString(),
+        });
+
+        if (error) {
+          // If table doesn't exist yet, update auth user_metadata
+          await supabase.auth.updateUser({
+            data: { full_name: fullName.trim() },
+          });
+        }
+
+        await refreshProfile();
+        setSavedSuccess("Profile details saved successfully!");
+        setTimeout(() => setSavedSuccess(null), 3000);
+      }
+    } catch {
+      setErrorMessage("Could not save profile. Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        setPasswordError(error.message);
+      } else {
+        setPasswordSuccess(true);
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => setPasswordSuccess(false), 3500);
+      }
+    } catch {
+      setPasswordError("Failed to update password. Please try again.");
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   return (
@@ -42,7 +130,14 @@ export default function SettingsPage() {
       {savedSuccess && (
         <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center gap-2 text-sm font-medium animate-fade-in">
           <Check className="w-4 h-4" />
-          Settings saved successfully!
+          {savedSuccess}
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm flex items-center gap-2 animate-fade-in">
+          <AlertCircle className="w-4 h-4" />
+          {errorMessage}
         </div>
       )}
 
@@ -53,13 +148,14 @@ export default function SettingsPage() {
           <CardDescription>Update your personal information and contact details</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSave} className="space-y-4">
+          <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Full Name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 icon={<User className="w-4 h-4" />}
+                placeholder="Your Name"
               />
               <Input
                 label="Email Address"
@@ -68,9 +164,9 @@ export default function SettingsPage() {
                 className="opacity-70 cursor-not-allowed"
               />
             </div>
-            <Button type="submit">
+            <Button type="submit" disabled={isSavingProfile}>
               <Save className="w-4 h-4 mr-1.5" />
-              Save Profile
+              {isSavingProfile ? "Saving..." : "Save Profile"}
             </Button>
           </form>
         </CardContent>
@@ -163,13 +259,42 @@ export default function SettingsPage() {
           <CardTitle>Security & Password</CardTitle>
           <CardDescription>Manage credentials and account protection</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Input label="Current Password" type="password" placeholder="••••••••" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="New Password" type="password" placeholder="Min 6 characters" />
-            <Input label="Confirm New Password" type="password" placeholder="Repeat new password" />
-          </div>
-          <Button type="button">Update Password</Button>
+        <CardContent>
+          {passwordSuccess && (
+            <div className="mb-4 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 flex items-center gap-2 text-sm font-medium">
+              <Check className="w-4 h-4" />
+              Password updated successfully!
+            </div>
+          )}
+          {passwordError && (
+            <div className="mb-4 p-4 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {passwordError}
+            </div>
+          )}
+          <form onSubmit={handleUpdatePassword} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="New Password"
+                type="password"
+                placeholder="Min 6 characters"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                icon={<KeyRound className="w-4 h-4" />}
+              />
+              <Input
+                label="Confirm New Password"
+                type="password"
+                placeholder="Repeat new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                icon={<KeyRound className="w-4 h-4" />}
+              />
+            </div>
+            <Button type="submit" disabled={isUpdatingPassword}>
+              {isUpdatingPassword ? "Updating..." : "Update Password"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
