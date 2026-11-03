@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,7 +11,6 @@ import {
   Sparkles,
   CheckCircle2,
   Calendar,
-  DollarSign,
   Edit2,
   Trash2,
   History,
@@ -23,7 +22,7 @@ import { SavingsModal } from "@/components/savings/savings-modal";
 import { ContributionModal } from "@/components/savings/contribution-modal";
 import { ContributionHistoryModal } from "@/components/savings/contribution-history-modal";
 import { DeleteModal } from "@/components/transactions/delete-modal";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { SavingsGoal } from "@/types";
 
 export default function SavingsPage() {

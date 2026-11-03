@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   Search,
-  Filter,
   ArrowUpRight,
   ArrowDownRight,
   MoreHorizontal,

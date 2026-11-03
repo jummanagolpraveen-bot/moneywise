@@ -12,38 +12,7 @@ export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchCategories = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name", { ascending: true });
-
-      if (error) {
-        console.warn("Could not load categories from database:", error.message);
-        // Fallback to local default categories
-        fallbackDefaults();
-      } else if (!data || data.length === 0) {
-        // If user table is empty, auto-seed defaults into DB
-        await seedDefaultCategories();
-      } else {
-        setCategories(data as Category[]);
-      }
-    } catch {
-      fallbackDefaults();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  const fallbackDefaults = () => {
+  const fallbackDefaults = useCallback(() => {
     const defaults: Category[] = [
       ...EXPENSE_CATEGORIES.map((c, i) => ({
         id: `def-exp-${i}`,
@@ -67,9 +36,9 @@ export function useCategories() {
       })),
     ];
     setCategories(defaults);
-  };
+  }, [user]);
 
-  const seedDefaultCategories = async () => {
+  const seedDefaultCategories = useCallback(async () => {
     if (!user) return;
     try {
       const defaultRows = [
@@ -104,7 +73,38 @@ export function useCategories() {
     } catch {
       fallbackDefaults();
     }
-  };
+  }, [user, supabase, fallbackDefaults]);
+
+  const fetchCategories = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name", { ascending: true });
+
+      if (error) {
+        console.warn("Could not load categories from database:", error.message);
+        // Fallback to local default categories
+        fallbackDefaults();
+      } else if (!data || data.length === 0) {
+        // If user table is empty, auto-seed defaults into DB
+        await seedDefaultCategories();
+      } else {
+        setCategories(data as Category[]);
+      }
+    } catch {
+      fallbackDefaults();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, supabase, fallbackDefaults, seedDefaultCategories]);
 
   const addCategory = async (name: string, type: TransactionType, color: string = "#3c5fa0") => {
     if (!user) return null;

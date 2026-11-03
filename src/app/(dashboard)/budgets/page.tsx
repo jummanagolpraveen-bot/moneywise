@@ -1,22 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   PiggyBank,
   AlertTriangle,
   CheckCircle,
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Edit2,
   Trash2,
-  TrendingDown,
-  Info,
 } from "lucide-react";
 import { useBudgets } from "@/hooks/use-budgets";
 import { useAuth } from "@/context/auth-provider";
